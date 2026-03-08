@@ -1,0 +1,387 @@
+# companies (公司池)
+#     - name： 公司名称,唯一标识符。LLM 写新闻、玩家买股票、MCP 查表时都用这个。名字自带梗（如“恒大不产”），能立刻让玩家联想到现实原型，增加代入感。
+#     - industry_tag：行业标签，宏观事件挂钩。当 MacroEvents 触发“科技股暴跌”或“地产寒冬”时，MCP 会根据这个标签筛选出受影响的股票，批量修改股价。
+#     - description：公司简介，纯叙事素材。这段话是给 LLM 看的，用来在新闻、个股详情页里渲染公司形象。注意： 它只描述“业务模式”和“调性”，绝不包含“财务好坏”或“股价高低”。
+#         (例子：恒大的描述是“擅长借钱盖楼”，至于它借的钱还不还得上？那是 MCP 随机生成的 hidden_fundamentals 决定的。)
+
+# celebrities (名人池)
+#     - name：名人姓名，NPC 交互对象。玩家可以尝试约见、贿赂或在这个人的推特下留言。
+#     - role：身份/职位，LLM 评估依据。当玩家想约见“马斯氪”时，LLM 看到他是“特斯跨CEO”，会判定这需要极高的 fame（名声值），否则直接驳回为 impossible。
+#     - influence_power：影响力权重 (0-100)，核弹参数。在 V2.0 市场引擎的【Phase 1: 注意力溢出】阶段，这个数值决定了该名人发一条推特能对股价造成多大的波澜。(99分的马斯氪发帖能让股价跳涨 20%，60分的贾跃停只能影响 1%。)
+#     - description：人物画像，性格与行为逻辑。LLM 用来扮演这个 NPC 的说话语气。比如看到“喜欢发狗头表情”，LLM 在生成马斯氪的推文时就会模仿这种风格。
+
+# institutions (机构池)
+#     - name：机构名称，市场博弈主体。这是在后台运行的那些 AI 基金的名字。
+#     - type：策略类型，AI 行为逻辑核心。
+#           * value：低吸高抛，稳健。
+#           * hedge_short：做空秃鹫，专盯坏账，会发做空报告。
+#           * quant：量化狗，追涨杀跌，放大波动。
+#     - capital：初始资金规模，市场冲击力上限。决定了这个机构能买多少货。资金越厚，对滑点的影响越大（遵循非线性公式）。
+#     - description：机构风格描述，新闻素材。当机构爆仓或举牌时，LLM 会引用这段描述来写新闻。(例子：如果“浑水摸鱼”做空了，新闻会写“正如描述所言，这群鲨鱼闻到了血腥味...”。)
+
+
+
+companies:
+  # 科技与互联网 (Tech & Internet)
+  - name: "香梨科技"
+    industry_tag: "科技"
+    description: "一家靠把充电线卖到 199 元维持高利润的宗教型科技公司，每年手机只换个外壳颜色就能让粉丝连夜排队。"
+  - name: "微硬集团"
+    industry_tag: "科技"
+    description: "他们的操作系统每更新一次，全球生产力就下降 5%。"
+  - name: "谷弟搜索"
+    industry_tag: "科技"
+    description: "声称不作恶，但比你更了解你昨晚搜了什么不可描述的内容。"
+  - name: "脸不书 (Fakebook)"
+    industry_tag: "科技"
+    description: "致力于让全球 50 亿人互相争吵并精准投放脱发广告的社交巨头。"
+  - name: "鸭马逊"
+    industry_tag: "电商"
+    description: "从卖书起家，现在想把每一个地球人都变成它的 Prime 会员。"
+  - name: "特斯跨"
+    industry_tag: "新能源"
+    description: "一家主业是炒作虚拟币、副业是造火箭、顺便卖几辆电车的能源公司。"
+  - name: "硬猥大"
+    industry_tag: "半导体"
+    description: "他们的显卡不仅能玩游戏，还能挖矿、炼丹和毁灭地球环境。"
+  - name: "网抑云"
+    industry_tag: "互联网"
+    description: "一家靠贩卖深夜抑郁情绪来推广黑胶会员的音乐流媒体。"
+  - name: "拼少少"
+    industry_tag: "电商"
+    description: "让三亿人每天都在'砍一刀'中浪费生命的社交电商奇迹。"
+  - name: "字节跳舞"
+    industry_tag: "互联网"
+    description: "算法比你妈还懂你喜欢看什么，专门生产奶头乐的短视频工厂。"
+  - name: "丑团不送"
+    industry_tag: "互联网"
+    description: "主要业务是把黄颜色的电动车塞满城市的每一条人行道。"
+  - name: "弟弟打车"
+    industry_tag: "互联网"
+    description: "虽然叫出行平台，但核心科技是大数据杀熟和排队时长估算。"
+  - name: "企鹅集团"
+    industry_tag: "互联网"
+    description: "游戏做得稀烂，但靠皮肤和抽卡赚得盆满钵满，还擅长抄袭别人的创意。"
+  - name: "阿里叭叭"
+    industry_tag: "电商"
+    description: "让天下没有难做的生意，但中小商家越来越难做。"
+  - name: "摆渡搜索"
+    industry_tag: "互联网"
+    description: "搜出来全是广告，但依然是中文互联网的入口。"
+  - name: "知糊"
+    industry_tag: "互联网"
+    description: "人均985，刚下飞机，分享你刚编的故事。"
+  - name: "小红薯"
+    industry_tag: "互联网"
+    description: "人均爱马仕，滤镜开到最大，全是种草和软广。"
+  - name: "比哑迪"
+    industry_tag: "新能源"
+    description: "一家号称要打败特斯跨但自己还在为产能发愁的电池车厂，车标被戏称为'三根韭菜'。"
+  - name: "理响汽车"
+    industry_tag: "新能源"
+    description: "创始人天天喊'500万以内最好的SUV'，但车主更关心增程器会不会像拖拉机一样响。"
+  - name: "未莱汽车"
+    industry_tag: "新能源"
+    description: "靠卖高价电动车和车主俱乐部会员费生存的'用户企业'，据说换电站比加油站还难找。"
+  - name: "小膨汽车"
+    industry_tag: "新能源"
+    description: "名字听起来像小型膨胀螺丝，但实际是致力于把智能驾驶做到'自动撞墙'的先锋。"
+  - name: "大米科技"
+    industry_tag: "科技"
+    description: "致力于把所有家电都变成互联网入口，并坚持让用户为发烧而生的性价比教主。现在的目标是重新定义年轻人的第一辆电动轮椅(汽车)。"
+  - name: "菊花科技"
+    industry_tag: "科技"
+    description: "这家公司实际上不生产电子产品，它生产的是纯粹的爱国主义信仰和'遥遥领先'的口号。据说它的logo本身就能屏蔽5G信号。"
+  # 传媒与娱乐
+  - name: "迪宝宝"
+    industry_tag: "娱乐"
+    description: "表面是造梦工厂，实则靠收购漫威、星球大战等IP然后拍续集圈钱的版权狂魔。"
+  - name: "奶飞网"
+    industry_tag: "流媒体"
+    description: "一家靠给用户推荐'猜你喜欢'但永远猜不准的流媒体平台，唯一确定的是每个月都会扣你会员费。"
+  - name: "华纳弟控"
+    industry_tag: "娱乐"
+    description: "拥有DC宇宙却把超人蝙蝠侠拍成烂片，然后靠卖哈利波特周边回血的迷之公司。"
+  - name: "索你狗"
+    industry_tag: "电子/娱乐"
+    description: "从Walkman到PlayStation，一直在被友商模仿，但从未被超越的日本财阀。"
+  - name: "任天躺"
+    industry_tag: "游戏"
+    description: "靠马里奥和塞尔达两个IP吃三十年老本，但每次出新作玩家还是乖乖掏钱的法务部战神。"
+  - name: "玉璧罐头厂"
+    industry_tag: "游戏"
+    description: "年产3个开放世界游戏，每个都是换皮复制粘贴，但总有玩家买账的罐头食品公司。"
+
+
+  # 消费与医药 (Consumer & Pharma)
+  - name: "睿智咖啡"
+    industry_tag: "消费"
+    description: "用卖白开水的价格卖咖啡，用做火箭的速度开店的资本怪兽。"
+  - name: "猫苔酒业"
+    industry_tag: "消费"
+    description: "主要功能是用来行贿和收藏的液体黄金，没人真把它当酒喝。"
+  - name: "可抠可乐"
+    industry_tag: "消费"
+    description: "向全球出售糖水和肥胖症，顺便收购了地球上一半的水资源。"
+  - name: "辉瑞不举"
+    industry_tag: "医药"
+    description: "靠蓝色小药丸起家，现在垄断了全人类的疫苗生意。"
+  - name: "恨牛仕"
+    industry_tag: "消费"
+    description: "卖的不是包，是阶级门槛。配货额度比包本身还贵。"
+  - name: "莱克"
+    industry_tag: "消费"
+    description: "一家把塑料瓶回收做成鞋子，再以限量版名义卖几千块的环保先锋。"
+  - name: "金拱桥"
+    industry_tag: "餐饮"
+    description: "全球最大的玩具经销商，顺便卖一点高热量汉堡。"
+  - name: "气氛组咖啡"
+    industry_tag: "餐饮"
+    description: "主要贩卖'拿着笔记本在咖啡店办公'的精英幻觉，咖啡只是入场券。"
+  - name: "啃得基"
+    industry_tag: "餐饮"
+    description: "疯狂星期四的始作俑者，主要靠卖蛋挞和周边玩具活下去的炸鸡店。"
+  - name: "驴牌"
+    industry_tag: "奢侈品"
+    description: "卖的不是包，是满屏的Logo，即使背着像春运编织袋也有人抢着买。"
+  - name: "五粮夜"
+    industry_tag: "消费"
+    description: "仅次于猫苔的液体黄金，但喝多了第二天头疼，适合不想行贿只想过年喝的自用人群。"
+  - name: "北大慌"
+    industry_tag: "农业"
+    description: "种的大米远销全国，但自己员工吃的可能是陈米。"
+  - name: "恒瑞药渣"
+    industry_tag: "医药"
+    description: "创新药研发十年磨一剑，但仿制药卖得比原研还贵。"
+  - name: "药明康德子"
+    industry_tag: "医药"
+    description: "为全世界药厂打工的打工仔，但自己股价比老板还高。"
+
+  # 物流与通信
+  - name: "顺疯速递"
+    industry_tag: "物流"
+    description: "承诺次日达，但经常因为送货小哥太累而变成隔日达的中国快递界恨牛仕。"
+  - name: "京咚物流"
+    industry_tag: "物流"
+    description: "以211限时达著称，但你的包裹可能已经在配送站躺了两天。"
+  - name: "移不动通信"
+    industry_tag: "电信"
+    description: "每月给你发短信提醒流量超标，但从来不说套餐里还有多少分钟通话的国企。"
+  - name: "联不通"
+    industry_tag: "电信"
+    description: "信号时好时坏，但扣费从不迟到。"
+
+  # 地产与金融 (Real Estate & Finance)
+  - name: "恒小地产"
+    industry_tag: "地产"
+    description: "擅长用借来的钱盖楼，再用盖楼的钱去造车和踢球。"
+  - name: "千科地产"
+    industry_tag: "地产"
+    description: "天天喊着'活下去'，却依然把房子卖得比肾还贵的开发商。"
+  - name: "比贵园地产"
+    industry_tag: "地产"
+    description: "致力于把五星级的家盖在十八线县城的农田里。"
+  - name: "低盛集团"
+    industry_tag: "金融"
+    description: "传说中控制了世界一半财富的吸血鬼投行，虽然他们自称在造福人类。"
+  - name: "摩根史丹利"
+    industry_tag: "金融"
+    description: "只要给钱，他们能把地狱里的火种包装成'清洁能源ETF'上市。"
+  - name: "瑞金集团"
+    industry_tag: "金融"
+    description: "专门为那些不想让税务局知道钱在哪里的富豪提供'隐私服务'。"
+  - name: "会疯银行"
+    industry_tag: "金融"
+    description: "这是一家历史悠久、业务遍布全球、尤其擅长处理'特殊资金'的银行。"
+  - name: "花旗参银行"
+    industry_tag: "金融"
+    description: "他们的信用卡年费比你的月薪还高，专门服务那些从来不看账单的人。"
+  - name: "平不安保险"
+    industry_tag: "金融"
+    description: "你买保险时它是你亲人，你要理赔时它是你仇人。"
+  - name: "人兽保险"
+    industry_tag: "金融"
+    description: "保险条款像天书，理赔像渡劫。"
+
+  # 制造业与能源 (Manufacturing & Energy)
+  - name: "重石化"
+    industry_tag: "能源"
+    description: "不管国际油价涨还是跌，他们的油价总是稳步向上的神奇企业。"
+  - name: "宁德世代"
+    industry_tag: "新能源"
+    description: "掌握了电动爹的命脉，车企都在给它打工的电池霸主。"
+  - name: "拨阴公司"
+    industry_tag: "制造"
+    description: "一家主要生产'如果不掉零件就能飞'的飞行器的老牌巨头。"
+  - name: "洛克希德马丁路德金"
+    industry_tag: "军工"
+    description: "只要世界和平，他们的股价就会跌；只要哪里打仗，他们就开香槟。"
+
+celebrities:
+  - name: "马斯氪"
+    role: "特斯跨CEO"
+    influence_power: 99
+    description: "会在推特上发个狗头表情就能让某种虚拟币暴涨500%的男人。"
+  - name: "巴灰特"
+    role: "股神"
+    influence_power: 95
+    description: "每天喝五瓶可乐，但这并不妨碍他依然是那个住在奥马哈的财富先知。"
+  - name: "扎克格格"
+    role: "脸不书CEO"
+    influence_power: 85
+    description: "如果不看他那双像蜥蜴人一样没有感情的眼睛，他确实是个编程天才。"
+  - name: "库克船长"
+    role: "香梨CEO"
+    influence_power: 90
+    description: "虽然没什么创新，但他真的很擅长把手机配件分开卖来赚钱。"
+  - name: "雷俊"
+    role: "大米科技CEO"
+    influence_power: 80
+    description: "Are you OK? 他是那种会让米粉为发烧而生的性价比之王。"
+  - name: "罗浩浩"
+    role: "行业冥灯"
+    influence_power: 70
+    description: "他进军哪个行业，哪个行业就会迅速变成红海然后倒闭。"
+  - name: "贾跃停"
+    role: "FF创始人"
+    influence_power: 60
+    description: "一直在为梦想窒息，一直在下周回国，PPT造车第一人。"
+  - name: "孙宇晨晨"
+    role: "波场创始人"
+    influence_power: 75
+    description: "哪里有热点哪里就有他，只要能割韭菜，哪怕是巴菲特的午餐他也敢鸽。"
+  - name: "川普"
+    role: "地产大亨/政客"
+    influence_power: 98
+    description: "没人比他更懂股市。只要他发一条大写的推文，华尔街都要抖三抖。"
+  - name: "佩洛西西"
+    role: "国会股神"
+    influence_power: 92
+    description: "她的投资回报率常年吊打巴菲特，总能在政策出台前精准买入。"
+  - name: "盖次"
+    role: "微硬创始人"
+    influence_power: 90
+    description: "退休后专心做慈善，但偶尔也会对新能源和疫苗发表意见的前首富。"
+  - name: "贝索撕"
+    role: "鸭马逊创始人"
+    influence_power: 95
+    description: "蓝色起源的老板，每天想着怎么上天，顺便管理全球最大的电商。"
+  - name: "马晕"
+    role: "阿里叭叭创始人"
+    influence_power: 88
+    description: "退休后到处演讲，教人做人生导师，但蚂蚁金服上市被叫停后就低调了。"
+  - name: "马化疼"
+    role: "企鹅集团创始人"
+    influence_power: 89
+    description: "沉默寡言，但靠游戏和社交让无数小学生充钱。"
+  - name: "李彦红"
+    role: "摆渡搜索创始人"
+    influence_power: 80
+    description: "一直坚持AI是摆渡的未来，但大家只知道摆渡是搜索广告商。"
+  - name: "王兴兴"
+    role: "丑团不送创始人"
+    influence_power: 78
+    description: "无边界战士，什么都想做，但外卖小哥不够用了。"
+  - name: "张一鸣人"
+    role: "字节跳舞创始人"
+    influence_power: 85
+    description: "算法推荐之父，让全国人民刷短视频停不下来。"
+  - name: "刘强咚"
+    role: "京咚物流创始人"
+    influence_power: 83
+    description: "自称兄弟，但把京东物流的员工外包了。"
+  - name: "嗦螺丝"
+    role: "金融大鳄"
+    influence_power: 90
+    description: "狙击英镑、引发亚洲金融危机的反派角色。"
+  - name: "达利欧鸭"
+    role: "桥水深不可测创始人"
+    influence_power: 88
+    description: "原则一大堆，但没人学得会，因为他的基金赚钱靠的不是原则。"
+  - name: "西蒙撕"
+    role: "文艺复兴韭菜机创始人"
+    influence_power: 86
+    description: "数学天才，用算法收割市场，但大奖章基金不对外开放。"
+  - name: "仁正飞"
+    role: "菊花科技创始人"
+    influence_power: 90
+    description: "军人出身，带领菊花扛过美国制裁，但女儿在加拿大被扣留，现在基本退居幕后。"
+  - name: "余大嘴"
+    role: "菊花科技BG CEO"
+    influence_power: 96
+    description: "喜欢在发布会上高呼'遥遥领先'，但实际上友商的设计都快被他们抄完了。"
+
+
+institutions:
+  - name: "黑曜石资本 (BlackRock)"
+    type: "value"
+    capital: 80000000
+    description: "管理着比大多数国家GDP还多的资产，实际上拥有半个地球。"
+  - name: "浑水摸鱼 (Muddy Waters)"
+    type: "hedge_short"
+    capital: 20000000
+    description: "专门盯着那些财务报表太完美的公司，像鲨鱼闻到了血腥味。"
+  - name: "文艺复兴韭菜机"
+    type: "quant"
+    capital: 50000000
+    description: "由一群数学家和物理学家组成，用比上帝还复杂的公式收割市场。"
+  - name: "红杉林资本"
+    type: "value"
+    capital: 40000000
+    description: "只要是被他们看中的赛道，猪都能飞起来。"
+  - name: "高瓴高领"
+    type: "value"
+    capital: 60000000
+    description: "奉行长期主义，哪怕被套牢了也会说是在做时间的朋友。"
+  - name: "老虎环球跑得快"
+    type: "hedge_short"
+    capital: 30000000
+    description: "风格极其激进，要么大赚特赚，要么直接把基金亏到解散。"
+  - name: "桥水深不可测"
+    type: "quant"
+    capital: 70000000
+    description: "达利欧的原则是极度透明，但他们的赚钱算法是个极度黑箱。"
+  - name: "木头姐方舟"
+    type: "quant"
+    capital: 25000000
+    description: "只买最颠覆的科技股，要么封神，要么腰斩，绝不平庸。"
+  - name: "先锋领航躺赢 (Vanguard)"
+    type: "value"
+    capital: 90000000
+    description: "指数基金之父，把成本降到最低，让普通人也能躺赢市场平均收益。"
+  - name: "富达达 (Fidelity)"
+    type: "value"
+    capital: 55000000
+    description: "管理着彼得·林奇曾经掌舵的麦哲伦基金，现在专注主动管理，广告打得响。"
+  - name: "KKR啃啃肉"
+    type: "value"
+    capital: 40000000
+    description: "杠杆收购之王，专挑大公司下手，然后分拆卖掉，吃完肉还要砸骨头。"
+  - name: "黑石石 (Blackstone)"
+    type: "value"
+    capital: 50000000
+    description: "苏世民的杰作，买下半个曼哈顿的房东，现在全球扫货房地产。"
+  - name: "橡树树 (Oaktree)"
+    type: "hedge_short"
+    capital: 28000000
+    description: "霍华德·马克斯的困境债务专家，专捡便宜货，但备忘录比基金业绩还出名。"
+  - name: "城堡堡 (Citadel)"
+    type: "quant"
+    capital: 65000000
+    description: "肯·格里芬的对冲基金帝国，做市商出身，现在用算法和人才碾压市场。"
+  - name: "两个西格玛 (Two Sigma)"
+    type: "quant"
+    capital: 45000000
+    description: "用机器学习和大数据做交易，员工一半是码农，一半是物理博士。"
+  - name: "幻方量化妖"
+    type: "quant"
+    capital: 30000000
+    description: "国内头部量化私募，用深度学习割韭菜，但市场不好时回撤也吓人。"
+  - name: "易方达达"
+    type: "value"
+    capital: 80000000
+    description: "公募一哥，张坤的易方达蓝筹让无数人站在山岗上，但规模依然万亿。"
+  - name: "高毅毅"
+    type: "value"
+    capital: 20000000
+    description: "汇聚了邱国鹭、邓晓峰等明星基金经理，但业绩也看天吃饭，偶尔互怼。"

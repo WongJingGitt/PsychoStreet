@@ -18,6 +18,15 @@ from constants import (
     TREND_BIAS_MIXED,
 )
 
+from db.content_pool import (
+    draw_companies,
+    draw_celebrities,
+    draw_institutions,
+    get_pool_status,
+    get_company_by_name,
+    get_celebrity_by_name,
+)
+
 
 def _json_response(data: dict) -> str:
     """将字典转换为 JSON 字符串"""
@@ -76,13 +85,13 @@ def init_player(conn: sqlite3.Connection, name: str, starting_cash: float) -> st
         return _error_response("INIT_PLAYER_FAILED", str(e))
 
 
-def init_companies(conn: sqlite3.Connection, companies: list[dict]) -> str:
+def init_companies(conn: sqlite3.Connection, companies: list[dict] | None = None) -> str:
     """
     初始化公司与股票
     
     Args:
         conn: 游戏数据库连接
-        companies: 公司列表，每个元素包含：
+        companies: 公司列表（可选）。如果为空，则从内容池随机抽取。
             - name: 公司名称
             - industry_tag: 行业标签
             - description: 公司简介
@@ -91,6 +100,16 @@ def init_companies(conn: sqlite3.Connection, companies: list[dict]) -> str:
         str: JSON 格式的响应
     """
     try:
+        if not companies:
+            pool_status = get_pool_status()
+            available = pool_status.get("companies_remaining", 0)
+            if available == 0:
+                return _error_response(
+                    "COMPANY_POOL_EXHAUSTED",
+                    "公司池已用完，请先在游戏设定中定义公司列表，或调用新股上市逻辑"
+                )
+            companies = draw_companies(15)
+        
         stock_ids = []
         
         for company in companies:
@@ -133,13 +152,13 @@ def init_companies(conn: sqlite3.Connection, companies: list[dict]) -> str:
         return _error_response("INIT_COMPANIES_FAILED", str(e))
 
 
-def init_npcs(conn: sqlite3.Connection, npcs: list[dict]) -> str:
+def init_npcs(conn: sqlite3.Connection, npcs: list[dict] | None = None) -> str:
     """
     初始化公司 NPC
     
     Args:
         conn: 游戏数据库连接
-        npcs: NPC列表，每个元素包含：
+        npcs: NPC列表（可选）。如果为空，则从名人池随机抽取。
             - company_id: 所属公司ID
             - name: NPC名称
             - role: 职位
@@ -148,6 +167,27 @@ def init_npcs(conn: sqlite3.Connection, npcs: list[dict]) -> str:
         str: JSON 格式的响应
     """
     try:
+        if not npcs:
+            pool_status = get_pool_status()
+            available = pool_status.get("celebrities_remaining", 0)
+            if available == 0:
+                return _error_response(
+                    "CELEBRITY_POOL_EXHAUSTED",
+                    "名人池已用完，请先在游戏设定中定义 NPC 列表"
+                )
+            
+            companies = conn.execute("SELECT id, name FROM Stock").fetchall()
+            npcs = []
+            
+            for company in companies:
+                celebs = draw_celebrities(2)
+                for celeb in celebs:
+                    npcs.append({
+                        "company_id": company["id"],
+                        "name": celeb["name"],
+                        "role": celeb["role"]
+                    })
+        
         npc_ids = []
         
         for npc in npcs:
@@ -363,13 +403,6 @@ def init_market_prices(conn: sqlite3.Connection) -> str:
         return _error_response("INIT_MARKET_PRICES_FAILED", str(e))
 
 
-INSTITUTION_NAMES = {
-    "value": ["价值回归资本", "基本面洞察基金", "长期投资伙伴", "理性分析资管"],
-    "hedge_short": ["浑水研究", "秃鹫资本", "做空先锋", "危机发现基金"],
-    "quant": ["高频猎手", "量化动能", "算法交易帝国", "数学天才基金"],
-}
-
-
 def init_institutions(conn: sqlite3.Connection, count: int = 4, types: list[str] | None = None) -> str:
     """
     初始化 AI 机构
@@ -377,7 +410,7 @@ def init_institutions(conn: sqlite3.Connection, count: int = 4, types: list[str]
     Args:
         conn: 游戏数据库连接
         count: 机构数量，默认 4 家
-        types: 指定机构类型列表，如 ["value", "hedge_short", "quant"]
+        types: 指定机构类型列表，如 ["value", "hedge_short", "quant"]（可选，默认从内容池抽取）
 
     Returns:
         str: JSON 格式的响应
@@ -390,28 +423,43 @@ def init_institutions(conn: sqlite3.Connection, count: int = 4, types: list[str]
                 "message": f"机构已存在 ({existing} 家)，跳过初始化"
             })
 
-        if types is None:
-            types = ["value", "hedge_short", "quant", "quant"]
+        pool_status = get_pool_status()
+        available = pool_status.get("institutions_remaining", 0)
+        
+        if available < count:
+            return _error_response(
+                "INSTITUTION_POOL_EXHAUSTED",
+                f"机构池剩余 {available} 家，不足以创建 {count} 家"
+            )
 
         created = []
 
-        for i in range(min(count, len(types))):
-            inst_type = types[i]
-            names = INSTITUTION_NAMES.get(inst_type, ["未知机构"])
-            name = random.choice(names) + str(i + 1)
+        if types is None:
+            drawn = draw_institutions(count)
+        else:
+            drawn = []
+            for t in types:
+                pool = draw_institutions(1, type_filter=t)
+                if pool:
+                    drawn.extend(pool)
+            if len(drawn) < count:
+                remaining = count - len(drawn)
+                extra = draw_institutions(remaining)
+                drawn.extend(extra)
 
-            capital = random.uniform(50_000_000, 200_000_000)
+        for inst in drawn:
+            capital = inst.get("capital", random.uniform(50_000_000, 200_000_000))
             risk_tolerance = random.uniform(0.3, 0.8)
 
             cursor = conn.execute(
                 """INSERT INTO Institution (name, type, capital, risk_tolerance, status)
                    VALUES (?, ?, ?, ?, 'active')""",
-                (name, inst_type, capital, risk_tolerance)
+                (inst["name"], inst["type"], capital, risk_tolerance)
             )
             created.append({
                 "inst_id": cursor.lastrowid,
-                "name": name,
-                "type": inst_type,
+                "name": inst["name"],
+                "type": inst["type"],
                 "capital": round(capital, 2),
             })
 
@@ -453,3 +501,33 @@ def tool_init_macro_events(total_turns: int) -> str:
 def tool_init_market_prices() -> str:
     """MCP 工具：初始化市场价格（需要连接参数）"""
     raise NotImplementedError("tool_init_market_prices 需要在 main.py 中实现")
+
+
+def list_available_companies() -> str:
+    """
+    列出内容池中剩余可用的公司
+    
+    Returns:
+        str: JSON 格式的公司列表
+    """
+    from db.content_pool import _load_pool, _companies_pool
+    
+    _load_pool()
+    
+    return _json_response({
+        "available": len(_companies_pool),
+        "companies": [
+            {"name": c["name"], "industry_tag": c["industry_tag"]}
+            for c in _companies_pool
+        ]
+    })
+
+
+def get_pool_status_tool() -> str:
+    """
+    获取内容池剩余状态
+    
+    Returns:
+        str: JSON 格式的状态信息
+    """
+    return _json_response(get_pool_status())

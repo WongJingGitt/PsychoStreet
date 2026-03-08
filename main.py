@@ -140,13 +140,13 @@ async def list_tools() -> list[Tool]:
         ),
         Tool(
             name="init_companies",
-            description="初始化公司与股票",
+            description="初始化公司与股票（可选：指定公司列表，不指定则从内容池随机抽取）",
             inputSchema={
                 "type": "object",
                 "properties": {
                     "companies": {
                         "type": "array",
-                        "description": "公司列表",
+                        "description": "公司列表（可选，不指定则从内容池随机抽取15家）",
                         "items": {
                             "type": "object",
                             "properties": {
@@ -158,18 +158,17 @@ async def list_tools() -> list[Tool]:
                         },
                     },
                 },
-                "required": ["companies"],
             },
         ),
         Tool(
             name="init_npcs",
-            description="初始化公司NPC",
+            description="初始化公司NPC（可选：指定NPC列表，不指定则从名人池随机抽取）",
             inputSchema={
                 "type": "object",
                 "properties": {
                     "npcs": {
                         "type": "array",
-                        "description": "NPC列表",
+                        "description": "NPC列表（可选，不指定则从名人池随机抽取）",
                         "items": {
                             "type": "object",
                             "properties": {
@@ -181,7 +180,6 @@ async def list_tools() -> list[Tool]:
                         },
                     },
                 },
-                "required": ["npcs"],
             },
         ),
         Tool(
@@ -681,15 +679,17 @@ async def call_tool(name: str, arguments: Any) -> list[TextContent]:
                 )
             
             elif name == "init_companies":
+                companies = arguments.get("companies")
                 result = init_tools.init_companies(
                     conn=_active_game_conn,
-                    companies=arguments["companies"],
+                    companies=companies,
                 )
             
             elif name == "init_npcs":
+                npcs = arguments.get("npcs")
                 result = init_tools.init_npcs(
                     conn=_active_game_conn,
-                    npcs=arguments["npcs"],
+                    npcs=npcs,
                 )
             
             elif name == "init_macro_events":
