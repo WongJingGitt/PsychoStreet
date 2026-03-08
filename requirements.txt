@@ -1,0 +1,15 @@
+# 《发疯华尔街》MCP Server 依赖
+
+# Python >= 3.11 required
+
+# MCP SDK
+mcp>=1.0.0
+
+# 其他依赖均为 Python 内置库：
+# - sqlite3
+# - pathlib
+# - random
+# - shutil
+# - json
+# - datetime
+# - asyncio
