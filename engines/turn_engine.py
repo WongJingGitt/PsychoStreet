@@ -173,7 +173,7 @@ def build_snapshot(conn: sqlite3.Connection, triggered_events: list[dict]) -> di
            ORDER BY trend_id""",
         (current_turn, current_turn)
     ).fetchall()
-    
+
     active_trends = [
         {
             "name": tr["name"],
@@ -183,7 +183,19 @@ def build_snapshot(conn: sqlite3.Connection, triggered_events: list[dict]) -> di
         }
         for tr in trend_rows
     ]
-    
+
+    # ── 玩家背包（语义化资产）────────────────────────────────
+    inventory_rows = conn.execute(
+        "SELECT item_id, name, category_tag, description, estimated_value, status, acquire_turn FROM PlayerInventory"
+    ).fetchall()
+    inventory_list = [dict(row) for row in inventory_rows]
+
+    # ── 玩家债务──────────────────────────────────────────────
+    debt_rows = conn.execute(
+        "SELECT debt_id, debt_type, amount_owed, collateral_item_id, due_turn, target_stock_id FROM PlayerDebts"
+    ).fetchall()
+    debt_list = [dict(row) for row in debt_rows]
+
     # ── 组装完整快照 ─────────────────────────────────────
     # 获取本回合的 broadcast traces（供 LLM 播报）
     broadcast_traces = conn.execute(
@@ -207,6 +219,8 @@ def build_snapshot(conn: sqlite3.Connection, triggered_events: list[dict]) -> di
         "active_trends": active_trends,
         "player": player_dict,
         "active_buffs": active_buffs,
+        "inventory": inventory_list,
+        "debts": debt_list,
         "market_snapshot": market_snapshot,
         "market_news": market_news,
     }

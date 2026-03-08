@@ -84,7 +84,7 @@ def settle_market_turn(
     # ==========================================
     # Phase 5: 级联清算
     # ==========================================
-    traces.extend(_process_liquidations(conn))
+    traces.extend(_process_liquidations(conn, current_turn))
 
     # ==========================================
     # 保存 traces
@@ -430,9 +430,41 @@ def _settle_prices_nonlinear(
     conn.commit()
 
 
-def _process_liquidations(conn: sqlite3.Connection) -> list[dict]:
-    """Phase 5: 级联清算与机构破产"""
+def _process_liquidations(conn: sqlite3.Connection, current_turn: int) -> list[dict]:
+    """Phase 5: 级联清算与机构破产 + 债务逾期清算"""
     traces = []
+
+    # ── 债务逾期清算（Margin Call）──────────────────────────────
+    debts = conn.execute("SELECT * FROM PlayerDebts").fetchall()
+    
+    for debt in debts:
+        if debt["debt_type"] == "cash_loan" and current_turn >= debt["due_turn"]:
+            item = conn.execute(
+                "SELECT * FROM PlayerInventory WHERE item_id=?",
+                (debt["collateral_item_id"],)
+            ).fetchone()
+            
+            if item:
+                traces.append({
+                    "stock_id": None,
+                    "trace_type": "broadcast",
+                    "content": f"【破产清算】玩家未能按期偿还债务，其抵押物「{item['name']}」已被地下钱庄强制没收！"
+                })
+            
+            conn.execute(
+                "DELETE FROM PlayerDebts WHERE debt_id=?",
+                (debt["debt_id"],)
+            )
+            
+            if item:
+                conn.execute(
+                    "DELETE FROM PlayerInventory WHERE item_id=?",
+                    (debt["collateral_item_id"],)
+                )
+    
+    conn.commit()
+
+    # ── 机构破产清算（原有逻辑）────────────────────────────────
 
     institutions = conn.execute("SELECT * FROM Institution WHERE status='active'").fetchall()
 

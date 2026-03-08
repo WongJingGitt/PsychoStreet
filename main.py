@@ -16,7 +16,7 @@ from mcp.types import Tool, TextContent
 from db import global_db, game_db
 from db.schema import init_global_db, init_game_db
 from constants import DEFAULT_STARTING_CASH, DEFAULT_COMPANY_COUNT, DEFAULT_TOTAL_TURNS
-from tools import session_tools, init_tools, turn_tools, trade_tools, intent_tools
+from tools import session_tools, init_tools, turn_tools, trade_tools, intent_tools, job_tools, inventory_tools
 from engines.turn_engine import advance_turn
 
 
@@ -432,6 +432,110 @@ async def list_tools() -> list[Tool]:
                 "required": ["intents"],
             },
         ),
+        
+        # 打工系统工具
+        Tool(
+            name="apply_job",
+            description="申请入职到某公司",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "company_id": {"type": "integer", "description": "目标公司ID"},
+                    "position_level": {
+                        "type": "string", 
+                        "enum": ["entry", "middle", "high"],
+                        "description": "申请的职位级别：entry=基层, middle=中层, high=高管",
+                        "default": "entry"
+                    },
+                },
+                "required": ["company_id"],
+            },
+        ),
+        Tool(
+            name="quit_job",
+            description="从当前公司离职",
+            inputSchema={
+                "type": "object",
+                "properties": {},
+            },
+        ),
+        Tool(
+            name="get_job_info",
+            description="查询当前工作状态",
+            inputSchema={
+                "type": "object",
+                "properties": {},
+            },
+        ),
+        Tool(
+            name="acquire_item",
+            description="获取/购买物品（资产、黑料、凭证等）",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "item_name": {"type": "string", "description": "物品名称"},
+                    "category_tag": {"type": "string", "description": "语义化标签：重资产/致命黑料/暗网凭证/收藏品"},
+                    "description": {"type": "string", "description": "详细描述"},
+                    "estimated_cost": {"type": "number", "description": "预估成本"},
+                    "feasibility_tier": {
+                        "type": "string",
+                        "enum": ["impossible", "hard", "normal", "easy", "trivial"],
+                        "description": "现实可行性档位",
+                        "default": "normal"
+                    },
+                },
+                "required": ["item_name", "category_tag", "description", "estimated_cost"],
+            },
+        ),
+        Tool(
+            name="update_item_status",
+            description="修改物品的语义状态（存放地点、法律状态等）",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "item_id": {"type": "integer", "description": "物品ID"},
+                    "new_status": {"type": "string", "description": "新状态描述，如'已存入瑞士银行'"},
+                },
+                "required": ["item_id", "new_status"],
+            },
+        ),
+        Tool(
+            name="consume_item",
+            description="消耗/销毁/售出物品",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "item_id": {"type": "integer", "description": "物品ID"},
+                    "cash_gained": {"type": "number", "description": "获得的现金（售出时）", "default": 0},
+                    "reason": {"type": "string", "description": "消耗原因"},
+                },
+                "required": ["item_id"],
+            },
+        ),
+        Tool(
+            name="take_loan",
+            description="用物品抵押借款",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "collateral_item_id": {"type": "integer", "description": "抵押物ID"},
+                    "loan_amount": {"type": "number", "description": "借款金额"},
+                    "duration_turns": {"type": "integer", "description": "借款期限（回合数）"},
+                },
+                "required": ["collateral_item_id", "loan_amount", "duration_turns"],
+            },
+        ),
+        Tool(
+            name="repay_loan",
+            description="偿还抵押借款",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "debt_id": {"type": "integer", "description": "债务ID"},
+                },
+                "required": ["debt_id"],
+            },
+        ),
     ]
 
 
@@ -678,6 +782,53 @@ async def call_tool(name: str, arguments: Any) -> list[TextContent]:
                         conn=_active_game_conn,
                         intents=arguments["intents"],
                     )
+                )
+            
+            # ── 打工系统工具 ──────────────────────────────────────
+            elif name == "apply_job":
+                result = job_tools.tool_apply_job(
+                    company_id=arguments["company_id"],
+                    position_level=arguments.get("position_level", "entry"),
+                )
+            
+            elif name == "quit_job":
+                result = job_tools.tool_quit_job()
+            
+            elif name == "get_job_info":
+                result = job_tools.tool_get_job_info()
+            
+            elif name == "acquire_item":
+                result = inventory_tools.tool_acquire_item(
+                    item_name=arguments["item_name"],
+                    category_tag=arguments["category_tag"],
+                    description=arguments["description"],
+                    estimated_cost=arguments["estimated_cost"],
+                    feasibility_tier=arguments.get("feasibility_tier", "normal"),
+                )
+            
+            elif name == "update_item_status":
+                result = inventory_tools.tool_update_item_status(
+                    item_id=arguments["item_id"],
+                    new_status=arguments["new_status"],
+                )
+            
+            elif name == "consume_item":
+                result = inventory_tools.tool_consume_item(
+                    item_id=arguments["item_id"],
+                    cash_gained=arguments.get("cash_gained", 0.0),
+                    reason=arguments.get("reason", ""),
+                )
+            
+            elif name == "take_loan":
+                result = inventory_tools.tool_take_loan(
+                    collateral_item_id=arguments["collateral_item_id"],
+                    loan_amount=arguments["loan_amount"],
+                    duration_turns=arguments["duration_turns"],
+                )
+            
+            elif name == "repay_loan":
+                result = inventory_tools.tool_repay_loan(
+                    debt_id=arguments["debt_id"],
                 )
             
             else:

@@ -203,6 +203,29 @@ CREATE TABLE IF NOT EXISTS MarketTrace (
     content     TEXT    NOT NULL
 );
 
+-- 语义化大背包 (玩家拥有的所有实体资产、情报黑料、道具凭证)
+CREATE TABLE IF NOT EXISTS PlayerInventory (
+    item_id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    player_id       INTEGER NOT NULL DEFAULT 1,
+    name            TEXT    NOT NULL,
+    category_tag    TEXT    NOT NULL,
+    description     TEXT    NOT NULL DEFAULT '',
+    estimated_value REAL    NOT NULL DEFAULT 0.0,
+    status          TEXT    NOT NULL DEFAULT '正常持有',
+    acquire_turn    INTEGER NOT NULL
+);
+
+-- 极简债务与抵押表
+CREATE TABLE IF NOT EXISTS PlayerDebts (
+    debt_id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    player_id          INTEGER NOT NULL DEFAULT 1,
+    debt_type          TEXT    NOT NULL,
+    amount_owed        REAL    NOT NULL,
+    collateral_item_id INTEGER REFERENCES PlayerInventory(item_id),
+    due_turn           INTEGER,
+    target_stock_id    INTEGER
+);
+
 -- 游戏元数据表
 CREATE TABLE IF NOT EXISTS GameMeta (
     key   TEXT PRIMARY KEY,
