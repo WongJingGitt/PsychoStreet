@@ -392,6 +392,8 @@ def repay_loan(
 # ── MCP 工具封装 ──────────────────────────────────────
 
 def tool_acquire_item(
+    conn: sqlite3.Connection,
+    current_turn: int,
     item_name: str,
     category_tag: str,
     description: str,
@@ -399,45 +401,46 @@ def tool_acquire_item(
     feasibility_tier: str = "normal"
 ) -> str:
     """MCP 工具：获取/购买物品"""
-    from main import _active_game_conn, _current_turn
-    if _active_game_conn is None:
+    if conn is None:
         return _error_response("NO_ACTIVE_GAME", "没有激活的游戏")
     return acquire_item(
-        _active_game_conn, item_name, category_tag, description,
-        estimated_cost, _current_turn, feasibility_tier
+        conn, item_name, category_tag, description,
+        estimated_cost, current_turn, feasibility_tier
     )
 
 
-def tool_update_item_status(item_id: int, new_status: str) -> str:
+def tool_update_item_status(conn: sqlite3.Connection, item_id: int, new_status: str) -> str:
     """MCP 工具：修改物品状态"""
-    from main import _active_game_conn
-    if _active_game_conn is None:
+    if conn is None:
         return _error_response("NO_ACTIVE_GAME", "没有激活的游戏")
-    return update_item_status(_active_game_conn, item_id, new_status)
+    return update_item_status(conn, item_id, new_status)
 
 
-def tool_consume_item(item_id: int, cash_gained: float = 0.0, reason: str = "") -> str:
+def tool_consume_item(conn: sqlite3.Connection, item_id: int, cash_gained: float = 0.0, reason: str = "") -> str:
     """MCP 工具：消耗/售出物品"""
-    from main import _active_game_conn
-    if _active_game_conn is None:
+    if conn is None:
         return _error_response("NO_ACTIVE_GAME", "没有激活的游戏")
-    return consume_item(_active_game_conn, item_id, cash_gained, reason)
+    return consume_item(conn, item_id, cash_gained, reason)
 
 
-def tool_take_loan(collateral_item_id: int, loan_amount: float, duration_turns: int) -> str:
+def tool_take_loan(
+    conn: sqlite3.Connection,
+    current_turn: int,
+    collateral_item_id: int,
+    loan_amount: float,
+    duration_turns: int
+) -> str:
     """MCP 工具：抵押借款"""
-    from main import _active_game_conn, _current_turn
-    if _active_game_conn is None:
+    if conn is None:
         return _error_response("NO_ACTIVE_GAME", "没有激活的游戏")
     return take_loan(
-        _active_game_conn, collateral_item_id, loan_amount,
-        duration_turns, _current_turn
+        conn, collateral_item_id, loan_amount,
+        duration_turns, current_turn
     )
 
 
-def tool_repay_loan(debt_id: int) -> str:
+def tool_repay_loan(conn: sqlite3.Connection, debt_id: int) -> str:
     """MCP 工具：偿还借款"""
-    from main import _active_game_conn
-    if _active_game_conn is None:
+    if conn is None:
         return _error_response("NO_ACTIVE_GAME", "没有激活的游戏")
-    return repay_loan(_active_game_conn, debt_id)
+    return repay_loan(conn, debt_id)

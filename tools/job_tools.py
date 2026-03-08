@@ -252,25 +252,22 @@ def get_job_info(conn: sqlite3.Connection) -> str:
 
 # ── MCP 工具封装 ──────────────────────────────────────
 
-def tool_apply_job(company_id: int, position_level: str = "entry") -> str:
+def tool_apply_job(conn: sqlite3.Connection, company_id: int, position_level: str = "entry") -> str:
     """MCP 工具：申请入职"""
-    from main import _active_game_conn
-    if _active_game_conn is None:
+    if conn is None:
         return _error_response("NO_ACTIVE_GAME", "没有激活的游戏")
-    return apply_job(_active_game_conn, company_id, position_level)
+    return apply_job(conn, company_id, position_level)
 
 
-def tool_quit_job() -> str:
+def tool_quit_job(conn: sqlite3.Connection) -> str:
     """MCP 工具：离职"""
-    from main import _active_game_conn
-    if _active_game_conn is None:
+    if conn is None:
         return _error_response("NO_ACTIVE_GAME", "没有激活的游戏")
-    return quit_job(_active_game_conn)
+    return quit_job(conn)
 
 
-def tool_get_job_info() -> str:
+def tool_get_job_info(conn: sqlite3.Connection) -> str:
     """MCP 工具：查询工作状态"""
-    from main import _active_game_conn
-    if _active_game_conn is None:
+    if conn is None:
         return _error_response("NO_ACTIVE_GAME", "没有激活的游戏")
-    return get_job_info(_active_game_conn)
+    return get_job_info(conn)

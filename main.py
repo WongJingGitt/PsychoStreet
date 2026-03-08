@@ -787,18 +787,22 @@ async def call_tool(name: str, arguments: Any) -> list[TextContent]:
             # ── 打工系统工具 ──────────────────────────────────────
             elif name == "apply_job":
                 result = job_tools.tool_apply_job(
+                    conn=_active_game_conn,
                     company_id=arguments["company_id"],
                     position_level=arguments.get("position_level", "entry"),
                 )
             
             elif name == "quit_job":
-                result = job_tools.tool_quit_job()
+                result = job_tools.tool_quit_job(conn=_active_game_conn)
             
             elif name == "get_job_info":
-                result = job_tools.tool_get_job_info()
+                result = job_tools.tool_get_job_info(conn=_active_game_conn)
             
             elif name == "acquire_item":
+                current_turn = game_db.get_current_turn(_active_game_conn) if _active_game_conn else 1
                 result = inventory_tools.tool_acquire_item(
+                    conn=_active_game_conn,
+                    current_turn=current_turn,
                     item_name=arguments["item_name"],
                     category_tag=arguments["category_tag"],
                     description=arguments["description"],
@@ -808,19 +812,24 @@ async def call_tool(name: str, arguments: Any) -> list[TextContent]:
             
             elif name == "update_item_status":
                 result = inventory_tools.tool_update_item_status(
+                    conn=_active_game_conn,
                     item_id=arguments["item_id"],
                     new_status=arguments["new_status"],
                 )
             
             elif name == "consume_item":
                 result = inventory_tools.tool_consume_item(
+                    conn=_active_game_conn,
                     item_id=arguments["item_id"],
                     cash_gained=arguments.get("cash_gained", 0.0),
                     reason=arguments.get("reason", ""),
                 )
             
             elif name == "take_loan":
+                current_turn = game_db.get_current_turn(_active_game_conn) if _active_game_conn else 1
                 result = inventory_tools.tool_take_loan(
+                    conn=_active_game_conn,
+                    current_turn=current_turn,
                     collateral_item_id=arguments["collateral_item_id"],
                     loan_amount=arguments["loan_amount"],
                     duration_turns=arguments["duration_turns"],
@@ -828,6 +837,7 @@ async def call_tool(name: str, arguments: Any) -> list[TextContent]:
             
             elif name == "repay_loan":
                 result = inventory_tools.tool_repay_loan(
+                    conn=_active_game_conn,
                     debt_id=arguments["debt_id"],
                 )
             
